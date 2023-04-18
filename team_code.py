@@ -16,7 +16,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import ConcatDataset, DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Subset, Dataset, random_split
 from tqdm import tqdm
 
 
@@ -28,17 +28,18 @@ from tqdm import tqdm
 
 # Train your model.
 def train_challenge_model(data_folder, model_folder, verbose):
-    save_dir = r'splited\train'
-    if not os.path.exists(save_dir):
-        os.mkdir(save_dir)
+    save_dir = r'splited/train'
+    os.makedirs(save_dir, exist_ok=True)
     if len(os.listdir(save_dir)) == 0:
         train_split(data_folder, save_dir)
 
     batch_size = 40
     n_epoch = 50
-    train_ratio = 0.8
+    train_ratio = 0.9
+    patience = 4
     net = NeuralNetwork()
-    device = "cuda"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(device)
 
     net = net.to(device)
 
@@ -47,8 +48,8 @@ def train_challenge_model(data_folder, model_folder, verbose):
     val_amount = len(train_data) - train_amount
     train_set, valid_set = torch.utils.data.random_split(train_data, [train_amount, val_amount])
 
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=4)
-    valid_loader = DataLoader(valid_set, shuffle=True, num_workers=4)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=6)
+    valid_loader = DataLoader(valid_set, shuffle=True, num_workers=6)
 
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=0.0002, weight_decay=1e-5)
@@ -56,6 +57,7 @@ def train_challenge_model(data_folder, model_folder, verbose):
 
     train_losses = []
     val_losses = []
+    counter = 0
     best_loss = None
 
     for epoch in range(n_epoch):
@@ -107,6 +109,12 @@ def train_challenge_model(data_folder, model_folder, verbose):
             best_loss = mean_valid_loss
             torch.save(net.state_dict(), os.path.join(model_folder, "model.pth"))
             print("Saving model to {0}...".format(model_folder))
+            counter = 0
+        else:
+            counter += 1
+        if counter > patience:
+            print('\nModel is not improving, so we halt the training session.')
+            break
 
     return train_losses, val_losses
 
