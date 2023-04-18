@@ -1,4 +1,4 @@
-FROM python:3.10.1-buster
+FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime
 
 ## DO NOT EDIT these 3 lines.
 RUN mkdir /challenge
@@ -6,6 +6,7 @@ COPY ./ /challenge
 WORKDIR /challenge
 
 ## Install your dependencies here using apt install, etc.
+RUN pip3 install -U scikit-learn
 
 ## Include the following line if you have a requirements.txt file.
-RUN pip install -r requirements.txt
+## RUN pip install -r requirements.txt
