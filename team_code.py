@@ -62,7 +62,7 @@ def train_challenge_model(data_folder, model_folder, verbose):
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=6)
     valid_loader = DataLoader(valid_set, shuffle=True, num_workers=6)
 
-    criterion = nn.BCELoss()
+    criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=n_epoch * len(train_loader))
 
@@ -161,10 +161,11 @@ def run_challenge_models(models, data_folder, patient_id, verbose):
             pred.append(models(item.to(device))[0])
 
     pred_mean = sum(pred) / len(pred)
-    pred_mean = [float(pred_mean[0]), float(pred_mean[1])]
-    outcome = 0 if pred_mean[0] > pred_mean[1] else 1
-    outcome_probability = pred_mean[1]
-    cpc = 1 + 1 * (1 - pred_mean[0]) if outcome == 0 else 2 + 3 * pred_mean[1]
+    pred_mean = float(pred_mean[0])
+
+    cpc = pred_mean * 4 + 1 if 1 >= pred_mean >= 0 else (1 if pred_mean < 0 else 5)
+    outcome = 0 if cpc < 2.5 else 1
+    outcome_probability = np.clip(pred_mean, a_min=0.0, a_max=1.0)
 
     return outcome, outcome_probability, cpc
 
@@ -249,12 +250,13 @@ class ICareDataset(Dataset):
 
         outcome = [1, 0] if cpc <= 2 else [0, 1]
 
+        cpc = (cpc - 1) / 4
         cpc = torch.FloatTensor([cpc])
         outcome = torch.FloatTensor(outcome)
         signal = signal.transpose((1, 0))
         signal = torch.FloatTensor(signal)
         signal = signal.reshape((1, signal.shape[0], -1))
-        return signal, outcome
+        return signal, cpc
 
 
 class Dataset_test(Dataset):
@@ -310,7 +312,7 @@ class NeuralNetwork(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(),
             nn.Dropout(),
-            nn.Linear(4096, 2),
+            nn.Linear(4096, 1),
             nn.Sigmoid()
         )
 
@@ -323,6 +325,7 @@ class NeuralNetwork(nn.Module):
         x = x.view(x.shape[0], -1)
         x = self.fc(x)
         return x
+
 
 
 if __name__ == '__main__':
