@@ -19,6 +19,15 @@ import torch.nn.functional as F
 from torch.utils.data import ConcatDataset, DataLoader, Subset, Dataset, random_split
 from tqdm import tqdm
 
+DEVICE_NAME = "cuda" if torch.cuda.is_available() else "cpu"
+SAVE_DIR = r'splited/train'
+
+BATCH_SIZE = 40
+N_EPOCH = 50
+TRAIN_RATIO = 0.9
+PATIENCE = 4
+LR = 0.0002
+WEIGHT_DECAY = 1.0e-5
 
 ################################################################################
 #
@@ -28,17 +37,19 @@ from tqdm import tqdm
 
 # Train your model.
 def train_challenge_model(data_folder, model_folder, verbose):
-    save_dir = r'splited/train'
+    save_dir = SAVE_DIR
     os.makedirs(save_dir, exist_ok=True)
-    if len(os.listdir(save_dir)) == 0:
+    # Ignore .DS_STORE
+    if len(os.listdir(save_dir)) <= 1:
         train_split(data_folder, save_dir)
 
-    batch_size = 40
-    n_epoch = 50
-    train_ratio = 0.9
-    patience = 4
+    batch_size = BATCH_SIZE
+    n_epoch = N_EPOCH
+    train_ratio = TRAIN_RATIO
+    patience = PATIENCE
+
     net = NeuralNetwork()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = DEVICE_NAME
     print(device)
 
     net = net.to(device)
@@ -52,7 +63,7 @@ def train_challenge_model(data_folder, model_folder, verbose):
     valid_loader = DataLoader(valid_set, shuffle=True, num_workers=6)
 
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(net.parameters(), lr=0.0002, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(net.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=n_epoch * len(train_loader))
 
     train_losses = []
@@ -124,7 +135,7 @@ def train_challenge_model(data_folder, model_folder, verbose):
 def load_challenge_models(model_folder, verbose):
     model = NeuralNetwork()
     model.load_state_dict(torch.load(os.path.join(model_folder, "model.pth")))
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = DEVICE_NAME
     model.to(device)
     return model.eval()
 
@@ -143,7 +154,7 @@ def run_challenge_models(models, data_folder, patient_id, verbose):
     test_dataset = Dataset_test(signals)
     test_loader = DataLoader(test_dataset, shuffle=False, batch_size=1)
     pred = []
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = DEVICE_NAME
 
     for item in test_loader:
         with torch.no_grad():
@@ -224,7 +235,8 @@ class ICareDataset(Dataset):
     def __init__(self, path):
         super(ICareDataset, self).__init__()
         self.path = path
-        self.fileList = os.listdir(path)
+        # self.fileList = os.listdir(path)
+        self.fileList = [f for f in os.listdir(path) if not f.startswith('.')]
 
     def __len__(self):
         return len(self.fileList)
