@@ -23,8 +23,8 @@ from tqdm import tqdm
 from threading import Thread
 
 DEVICE_NAME = "cuda" if torch.cuda.is_available() else "cpu"
-# SAVE_DIR = r'split/train'
-SAVE_DIR = r"D:\Data\Dataset\split\train"
+SAVE_DIR = r'split/train'
+# SAVE_DIR = r"D:\Data\Dataset\split\train"
 
 # split eeg length
 EEG_LENGTH = 1920
@@ -347,7 +347,9 @@ def train_split(path, save_dir=None, thread_count=5):
 
     # EEG Split
     eeg_dir = os.path.join(save_dir, "eeg")
-    if len(os.listdir(eeg_dir)) <= 1:
+    if len(patients) < thread_count:
+        train_split_eeg(path, patients, eeg_dir, 0)
+    elif len(os.listdir(eeg_dir)) <= 1:
         print("No EEG slice, start splitting...")
         t1_start = time.time()
         thread_list = []
@@ -765,5 +767,5 @@ class NeuralNetwork(nn.Module):
 
 if __name__ == '__main__':
     # train_challenge_model(r"E:\Downloads\physionet\i-care-2.0.physionet.org\training", r"model", 3)
-    # train_challenge_model(r"D:\Data\Dataset\pc2023\train", r"model", 3)
+    # train_challenge_model(r"D:\Data\Dataset\pc2023\tiny", r"model", 3)
     pass
