@@ -7,6 +7,8 @@ WORKDIR /challenge
 
 ## Install your dependencies here using apt install, etc.
 RUN pip3 install -U scikit-learn
+RUN pip3 install -U tqdm
+RUN pip3 install -U mne
 
 ## Include the following line if you have a requirements.txt file.
 ## RUN pip install -r requirements.txt
